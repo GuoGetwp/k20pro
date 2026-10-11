@@ -55,4 +55,26 @@ jobs:
             CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm \
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
             CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueab
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            2>&1 | tee ../build.log
+
+      - name: Collect outputs
+        if: always()
+        run: |
+          mkdir -p dist
+          cp build.log config_check.txt dist/ 2>/dev/null || true
+          cp kernel/out/.config dist/config_built.txt 2>/dev/null || true
+          if [ -d kernel/out/arch/arm64/boot ]; then
+            find kernel/out/arch/arm64/boot -maxdepth 1 -name 'Image*' -exec cp {} dist/ \;
+            find kernel/out/arch/arm64/boot -name '*.dtb' -exec cp {} dist/ \;
+            find kernel/out/arch/arm64/boot -name 'dtbo.img' -exec cp {} dist/ \;
+          fi
+          strings dist/Image 2>/dev/null | grep -m1 'Linux version' > dist/version.txt || true
+          ls -l dist
+
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raphael-5.4-build
+          path: dist/
