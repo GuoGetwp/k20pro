@@ -4,77 +4,55 @@ on:
   workflow_dispatch:
 
 jobs:
-build:
+  build:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
-steps:
+    steps:
       - name: Free disk space
-run: |
-sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
-df -h /
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+          df -h /
 
       - name: Install build dependencies
-run: |
-sudo apt-get update
-sudo apt-get install -y clang-14 lld-14 llvm-14 \
-gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-bc bison flex libssl-dev libelf-dev dwarves cpio xz-utils \
-python3 device-tree-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-14 lld-14 llvm-14 \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            bc bison flex libssl-dev libelf-dev dwarves cpio xz-utils \
+            python3 device-tree-compiler
 
       - name: Clone kernel source
-run: |
-git clone --depth=1 -b zundamon-miui-5.4 \
-https://github.com/HeliumStudio-Dev/kernel_xiaomi_raphael-5.4 kernel
+        run: |
+          git clone --depth=1 -b zundamon-miui-5.4 \
+            https://github.com/HeliumStudio-Dev/kernel_xiaomi_raphael-5.4 kernel
 
       - name: Configure
         working-directory: kernel
-run: |
-export PATH=/usr/lib/llvm-14/bin:$PATH
-make O=out ARCH=arm64 CC=clang LD=ld.lld raphael_defconfig
+        run: |
+          export PATH=/usr/lib/llvm-14/bin:$PATH
+          make O=out ARCH=arm64 CC=clang LD=ld.lld raphael_defconfig
 
       - name: Check key options (informational)
         working-directory: kernel
-run: |
-: > ../config_check.txt
-for s in DRM_MSM QCOM_KGSL SPECTRA_CAMERA CLD_LL_CORE ICNSS \
-TOUCHSCREEN_GOODIX_GTX8 TOUCHSCREEN_NT36XXX \
-df -h /
-line=$(grep -Ename
-"^(# )?CONFIG_${s}[= ]"
-QPNP_FG_GEN4 QPNP_SMB5 SMB1390_CHARGE_PUMP IPA3 RMNET \
-donenameBecho| tee -a ../config_check.txt)
-CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm \
-uild
+        run: |
+          : > ../config_check.txt
+          for s in DRM_MSM QCOM_KGSL SPECTRA_CAMERA CLD_LL_CORE ICNSS \
+                   TOUCHSCREEN_GOODIX_GTX8 TOUCHSCREEN_NT36XXX \
+                   TOUCHSCREEN_XIAOMI_TOUCHFEATURE FINGERPRINT_GOODIX_TA \
+                   QPNP_FG_GEN4 QPNP_SMB5 SMB1390_CHARGE_PUMP IPA3 RMNET \
+                   PSI CGROUP_BPF ANDROID_BINDERFS F2FS_FS FS_VERITY \
+                   INCREMENTAL_FS SECURITY_SELINUX SCHED_WALT MODULES IKCONFIG; do
+            line=$(grep -E "^(# )?CONFIG_${s}[= ]" out/.config || echo "CONFIG_${s}: NOT PRESENT")
+            echo "$line" | tee -a ../config_check.txt
+          done
 
-- kernel: export PATH=/usr/lib/llvm-14/bin:| $PATH
-working-directory: set -o pipefail
-make -j$(nproc) O=out ARCH=arm64 \: |
-CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm \
-OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
-CROSS_COMPILE=aarch64-linux-gnu- \
-CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-2>&1 | tee ../build.log
-name
-OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \https://github.com/HeliumStudio-Dev/kernel_xiaomi_raphael-5.4 kernel
-Collect outputs2>&1 | tee ../build.logmkdir -p dist
-
-- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \"$line"name
-if: always()
--d kernel/out/arch/arm64/boot: Collect outputs
-if
-; then
-run
-Clone kernel sourcefind kernel/out/arch/arm64/boot -maxdepth 1 -name[find kernel/out/arch/arm64/boot -maxdepth 1 -name]https://github.com/HeliumStudio-Dev/kernel_xiaomi_raphael-5.4 kernel
--exec cpname'Image*'dist/ \;Cfind kernel/out/arch/arm64/boot -name}find kernel/out/arch/arm64/boot -nameonfigure
--exec cpkernel'*.dtb'dist/ \;export PATH=/usr/lib/llvm-14/bin:$PATHfind kernel/out/arch/arm64/boot -name}find kernel/out/arch/arm64/boot -namemake O=out ARCH=arm64 CC=clang LD=ld.lld raphael_defconfig
--exec cpname'dtbo.img'dist/ \;C'Linux version'}fiheck key options (informational)
-kernel
-for s in DRM_MSM QCOM_KGSL SPECTRA_CAMERA CLD_LL_CORE ICNSS \> dist/version.txt || truestrings dist/Image 2>/dev/null | grep -m1TOUCHSCREEN_GOODIX_GTX8 TOUCHSCREEN_NT36XXX \ls -l distTOUCHSCREEN_XIAOMI_TOUCHFEATURE FINGERPRINT_GOODIX_TA \
-> dist/version.txt || truestrings dist/Image 2>/dev/null | grep -m1
-
-QPNP_FG_GEN4 QPNP_SMB5 SMB1390_CHARGE_PUMP IPA3 RMNET \UploadnamePSI CGROUP_BPF ANDROID_BINDERFS F2FS_FS FS_VERITY \: name
-if: always()
-uses: actions/upload-artifact@v4
-with:
-name: raphael-5.4-build
-path: dist/
+      - name: Build
+        working-directory: kernel
+        run: |
+          export PATH=/usr/lib/llvm-14/bin:$PATH
+          set -o pipefail
+          make -j$(nproc) O=out ARCH=arm64 \
+            CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm \
+            OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueab
